@@ -1,0 +1,4 @@
+1. Select 1st , INPUT_FILE
+2. then select , bearing mapping file
+3. then select , URL_Bearing_SKF_20072018
+4. then select , bearing mapping file
