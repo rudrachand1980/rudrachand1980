@@ -1,0 +1,447 @@
+##:::::::::::Spend Analytics:::::::::::::::##
+##Load Libraries, (before that please install all the packages)
+library(dplyr)
+library(XML)
+library(RCurl)
+library(rvest)
+library(rlist)
+library(data.table)
+library(readxl)
+library(tidyverse)
+library(stringr)  # String manipulation
+library(rebus)    # Verbose regular expressions
+library(lubridate)
+library(tm)
+library(readxl)
+library(zoo)
+gc()
+rm(list = ls())
+getwd()
+setwd('C:/Users/user/Desktop/Web scrap_Bearing')
+##reading input file
+bearing_ip_file <- read.csv(file.choose(),header = TRUE)
+
+bearing_ip_file %>% select(-one_of(c("X","X.1","X.2","X.3")))    -> bearing_ip_file
+##filtering column  bearing
+bearing_ip_file %>% filter(bearing_ip_file$KeyNoun == 'BEARING') -> bearing_ip_file
+colnames(bearing_ip_file)
+
+#reading Bearing_Mapping Sheet file
+Bearing_Mapping_file <- read_excel(file.choose())
+colnames(Bearing_Mapping_file)
+Bearing_Mapping_file %>%
+  
+  filter(Bearing_Mapping_file$`Available in Input sheet` == 'WEB') -> Bearing_Mapping_file
+
+Bearing_Mapping_file <- Bearing_Mapping_file[,2]
+
+#########################
+#   WEB-Scrapping for 9 weblinks for SKF
+#reading web urls from xl
+#1
+#########################
+url_list <- list()
+url_file <- read_excel(file.choose())
+for(i in 1:nrow(url_file)){
+  url <- url_file$`Url Navigation`[i]
+  url_list <- append(url_list,url)
+}
+
+if (index(url_list[[1]]) == 1 ){
+  T1        <-read_html(url_list[[1]]) %>% html_nodes('table') %>% .[[1]] %>% html_table()
+  T1        <-as.data.frame(t(T1))
+  T1        <- T1[-c(2,4),-c(4:7)]
+  names(T1) <-c('VND_INNER_DIAMETER','VND_OUTER_DIAMETER','VND_WIDTH','VND_RADIAL_CLEARANCE')
+  T1        <- T1[-1,]
+  T2        <-read_html(url_list[[1]]) %>% html_nodes('table') %>% .[[2]] %>% html_table()
+  T2        <-as.data.frame(t(T2))
+  T3        <-read_html(url_list[[1]]) %>% html_nodes('table') %>% .[[3]] %>% html_table() 
+  T3        <-as.data.frame(t(T3))
+  T3        <- T3[-c(1,3,5),]
+  T3        <-T3[,-c(3,4,6,7,8,9)]
+  names(T3) <- c('VND_Dynamic','VND_Static','VND_Rated_speed')
+  T3        <- T3[-1,]
+  T3$ID     <- 1:nrow(T3)
+  T1$ID     <- 1:nrow(T1)
+  Table_merge <-merge(x = T1, y = T3, by = "ID", all.y = TRUE)
+  ##read Type and Series of bearing
+  read_html(url_list[[1]]) %>% html_nodes('h1') %>% html_text() %>% 
+    gsub(pattern = "\\b\r\n",replace = "") ->text1
+  text1     <- as.data.frame(text1)
+  text1     <- as.data.frame(t(text1))
+  names(text1)   <- c('VND_TYPE','VND_SERIES')
+  text1$ID       <- 1:nrow(text1)
+  Table_merge    <-merge(x = Table_merge, y = text1, by = "ID", all.y = TRUE)
+  ##read Mass of bearing
+  read_html(url_list[[1]]) %>% html_nodes('#main-content > div > div.product-table.product-details > div:nth-child(4) > div:nth-child(4) > div > table') %>% html_text() %>% 
+    gsub(pattern = "\\b\r\n",replace = "") %>% 
+    gsub(pattern = "\\b[A-z]",replace = "") %>%
+    stripWhitespace() ->text2
+  text2          <- as.data.frame(text2)
+  names(text2)   <- c('VND_WEIGHT')
+  text2$ID       <- 1:nrow(text2)
+  Table_22217_EK <-merge(x = Table_merge, y = text2, by = "ID", all.y = TRUE)
+  rm(T1,T2,T3,text1,text2,Table_merge)
+}
+
+#############################
+#2nd link
+##############################
+if (index(url_list[[2]]) == 1 ){
+  T1        <-read_html(url_list[[2]]) %>% html_nodes('table') %>% .[[1]] %>% html_table()
+  T1        <-as.data.frame(t(T1))
+  T1        <- T1[-c(2,4),-c(4:7)]
+  names(T1) <-c('VND_INNER_DIAMETER','VND_OUTER_DIAMETER','VND_WIDTH','VND_RADIAL_CLEARANCE')
+  T1        <- T1[-1,]
+  T2        <-read_html(url_list[[2]]) %>% html_nodes('table') %>% .[[2]] %>% html_table()
+  T2        <-as.data.frame(t(T2))
+  T3        <-read_html(url_list[[2]]) %>% html_nodes('table') %>% .[[3]] %>% html_table() 
+  T3        <-as.data.frame(t(T3))
+  T3        <- T3[-c(1,3,5),]
+  T3        <-T3[,-c(3,4,6,7,8,9)]
+  names(T3) <- c('VND_Dynamic','VND_Static','VND_Rated_speed')
+  T3        <- T3[-1,]
+  T3$ID     <- 1:nrow(T3)
+  T1$ID     <- 1:nrow(T1)
+  Table_merge <-merge(x = T1, y = T3, by = "ID", all.y = TRUE)
+  read_html(url_list[[2]]) %>% html_nodes('h1') %>% html_text() %>% gsub(pattern = "\\b\r\n",replace = "") ->text1
+  text1         <- as.data.frame(text1)
+  text1         <- as.data.frame(t(text1))
+  names(text1)  <- c('VND_TYPE','VND_SERIES')
+  text1$ID      <- 1:nrow(text1)
+  Table_merge    <-merge(x = Table_merge, y = text1, by = "ID", all.y = TRUE)
+  ##
+  ##read Mass of bearing
+  read_html(url_list[[2]]) %>% html_nodes('#main-content > div > div.product-table.product-details > div:nth-child(4) > div:nth-child(4) > div > table') %>% html_text() %>% 
+    gsub(pattern = "\\b\r\n",replace = "") %>% 
+    gsub(pattern = "\\b[A-z]",replace = "") %>%
+    stripWhitespace() ->text2
+  text2          <- as.data.frame(text2)
+  names(text2)   <- c('VND_WEIGHT')
+  text2$ID       <- 1:nrow(text2)
+  ##
+  Table_21309_E <-merge(x = Table_merge, y = text2, by = "ID", all.y = TRUE)
+  rm(T1,T2,T3,text1,text2,Table_merge)
+}
+
+################################
+#3rd-link
+####################################
+if (index(url_list[[3]]) == 1 ){
+  T1        <-read_html(url_list[[3]]) %>% html_nodes('table') %>% .[[1]] %>% html_table()
+  T1        <-as.data.frame(t(T1))
+  T1        <- T1[-c(2,4),-c(4:7)]
+  names(T1) <-c('VND_INNER_DIAMETER','VND_OUTER_DIAMETER','VND_WIDTH','VND_RADIAL_CLEARANCE')
+  T1        <- T1[-1,]
+  T2        <-read_html(url_list[[3]]) %>% html_nodes('table') %>% .[[2]] %>% html_table()
+  T2        <-as.data.frame(t(T2))
+  T3        <-read_html(url_list[[3]]) %>% html_nodes('table') %>% .[[3]] %>% html_table() 
+  T3        <-as.data.frame(t(T3))
+  T3        <- T3[-c(1,3,5),]
+  T3        <-T3[,-c(3,4,6,7,8,9)]
+  names(T3) <- c('VND_Dynamic','VND_Static','VND_Rated_speed')
+  T3        <- T3[-1,]
+  T3$ID     <- 1:nrow(T3)
+  T1$ID     <- 1:nrow(T1)
+  Table_merge <-merge(x = T1, y = T3, by = "ID", all.y = TRUE)
+  read_html(url_list[[3]]) %>% html_nodes('h1') %>% html_text() %>% gsub(pattern = "\\b\r\n",replace = "") ->text1
+  text1          <- as.data.frame(text1)
+  text1          <- as.data.frame(t(text1))
+  names(text1)   <- c('VND_TYPE','VND_SERIES')
+  text1$ID       <- 1:nrow(text1)
+  Table_merge    <-merge(x = Table_merge, y = text1, by = "ID", all.y = TRUE)
+  ##
+  read_html(url_list[[3]]) %>% html_nodes('#main-content > div > div.product-table.product-details > div:nth-child(4) > div:nth-child(4) > div > table') %>% html_text() %>% 
+    gsub(pattern = "\\b\r\n",replace = "") %>% 
+    gsub(pattern = "\\b[A-z]",replace = "") %>%
+    stripWhitespace() ->text2
+  text2          <- as.data.frame(text2)
+  names(text2)   <- c('VND_WEIGHT')
+  text2$ID       <- 1:nrow(text2)
+  ##
+  Table_22210_EK <-merge(x = Table_merge, y = text2, by = "ID", all.y = TRUE)
+  rm(T1,T2,T3,text1,text2,Table_merge)
+}
+#URL4
+################################
+if (index(url_list[[4]]) == 1 ){
+  T1        <-read_html(url_list[[4]]) %>% html_nodes('table') %>% .[[1]] %>% html_table()
+  T1        <-as.data.frame(t(T1))
+  T1        <- T1[-c(2,4),-c(4:7)]
+  names(T1) <-c('VND_INNER_DIAMETER','VND_OUTER_DIAMETER','VND_WIDTH','VND_RADIAL_CLEARANCE')
+  T1        <- T1[-1,]
+  T2        <-read_html(url_list[[4]]) %>% html_nodes('table') %>% .[[2]] %>% html_table()
+  T2        <-as.data.frame(t(T2))
+  T3        <-read_html(url_list[[4]]) %>% html_nodes('table') %>% .[[3]] %>% html_table() 
+  T3        <-as.data.frame(t(T3))
+  T3        <- T3[-c(1,3,5),]
+  T3        <-T3[,-c(3,4,6,7,8,9)]
+  names(T3) <- c('VND_Dynamic','VND_Static','VND_Rated_speed')
+  T3        <- T3[-1,]
+  T3$ID     <- 1:nrow(T3)
+  T1$ID     <- 1:nrow(T1)
+  Table_merge <-merge(x = T1, y = T3, by = "ID", all.y = TRUE)
+  read_html(url_list[[4]]) %>% html_nodes('h1') %>% html_text() %>% gsub(pattern = "\\b\r\n",replace = "") ->text1
+  text1     <- as.data.frame(text1)
+  text1     <- as.data.frame(t(text1))
+  names(text1)   <- c('VND_TYPE','VND_SERIES')
+  text1$ID       <- 1:nrow(text1)
+  Table_merge    <-merge(x = Table_merge, y = text1, by = "ID", all.y = TRUE)
+  ##read Mass of bearing
+  read_html(url_list[[4]]) %>% html_nodes('#main-content > div > div.product-table.product-details > div:nth-child(4) > div:nth-child(4) > div > table') %>% html_text() %>% 
+    gsub(pattern = "\\b\r\n",replace = "") %>% 
+    gsub(pattern = "\\b[A-z]",replace = "") %>%
+    stripWhitespace() ->text2
+  text2          <- as.data.frame(text2)
+  names(text2)   <- c('VND_WEIGHT')
+  text2$ID       <- 1:nrow(text2)
+  Table_22220_EK <-merge(x = Table_merge, y = text2, by = "ID", all.y = TRUE)
+  rm(T1,T2,T3,text1,text2,Table_merge)
+}
+#url5
+################################
+if (index(url_list[[5]]) == 1 ){
+  T1        <-read_html(url_list[[5]]) %>% html_nodes('table') %>% .[[1]] %>% html_table()
+  T1        <-as.data.frame(t(T1))
+  T1        <- T1[-c(2,4),-c(4:7)]
+  names(T1) <-c('VND_INNER_DIAMETER','VND_OUTER_DIAMETER','VND_WIDTH','VND_RADIAL_CLEARANCE')
+  T1        <- T1[-1,]
+  T2        <-read_html(url_list[[5]]) %>% html_nodes('table') %>% .[[2]] %>% html_table()
+  T2        <-as.data.frame(t(T2))
+  T3        <-read_html(url_list[[5]]) %>% html_nodes('table') %>% .[[3]] %>% html_table() 
+  T3        <-as.data.frame(t(T3))
+  T3        <- T3[-c(1,3,5),]
+  T3        <-T3[,-c(3,4,6,7,8,9)]
+  names(T3) <- c('VND_Dynamic','VND_Static','VND_Rated_speed')
+  T3        <- T3[-1,]
+  T3$ID     <- 1:nrow(T3)
+  T1$ID     <- 1:nrow(T1)
+  Table_merge <-merge(x = T1, y = T3, by = "ID", all.y = TRUE)
+  read_html(url_list[[5]]) %>% html_nodes('h1') %>% html_text() %>% gsub(pattern = "\\b\r\n",replace = "") ->text1
+  text1          <- as.data.frame(text1)
+  text1          <- as.data.frame(t(text1))
+  names(text1)   <- c('VND_TYPE','VND_SERIES')
+  text1$ID       <- 1:nrow(text1)
+  Table_merge    <-merge(x = Table_merge, y = text1, by = "ID", all.y = TRUE)
+  ##read Mass of bearing
+  read_html(url_list[[5]]) %>% html_nodes('#main-content > div > div.product-table.product-details > div:nth-child(4) > div:nth-child(4) > div > table') %>% html_text() %>% 
+    gsub(pattern = "\\b\r\n",replace = "") %>% 
+    gsub(pattern = "\\b[A-z]",replace = "") %>%
+    stripWhitespace() ->text2
+  text2          <- as.data.frame(text2)
+  names(text2)   <- c('VND_WEIGHT')
+  text2$ID       <- 1:nrow(text2)
+  Table_22208_EK <-merge(x = Table_merge, y = text2, by = "ID", all.y = TRUE)
+  rm(T1,T2,T3,text1,text2,Table_merge)
+}
+#url 6
+################################
+if (index(url_list[[6]]) == 1 ){
+  T1        <-read_html(url_list[[6]]) %>% html_nodes('table') %>% .[[1]] %>% html_table()
+  T1        <-as.data.frame(t(T1))
+  T1        <- T1[-c(2,4),-c(3,4,5)]
+  names(T1) <-c('VND_INNER_DIAMETER','VND_OUTER_DIAMETER','VND_WIDTH','VND_RADIAL_CLEARANCE')
+  T1        <- T1[-1,]
+  T2        <-read_html(url_list[[6]]) %>% html_nodes('table') %>% .[[2]] %>% html_table()
+  T2        <-as.data.frame(t(T2))
+  options(scipen = 999,"digits"=0)
+  T3        <-read_html(url_list[[6]]) %>% html_nodes('table') %>% .[[3]] %>% html_table() 
+  T3        <-as.data.frame(t(T3))
+  T3        <- T3[-c(1,3,5),]
+  T3        <-T3[,-c(3,4,6)]
+  
+  names(T3) <- c('VND_Dynamic','VND_Static','VND_Rated_speed')
+  T3        <- T3[-1,]
+  str(T3)
+  T3$ID     <- 1:nrow(T3)
+  T1$ID     <- 1:nrow(T1)
+  Table_merge <-merge(x = T1, y = T3, by = "ID", all.y = TRUE)
+  read_html(url_list[[6]]) %>% html_nodes('h1') %>% html_text() %>% gsub(pattern = "\\b\r\n",replace = "") ->text1
+  text1        <- as.data.frame(text1)
+  text1        <- as.data.frame(t(text1))
+  names(text1) <- c('VND_TYPE','VND_SERIES')
+  text1$ID     <- 1:nrow(text1)
+  Table_merge  <-merge(x = Table_merge, y = text1, by = "ID", all.y = TRUE)
+  ###read Mass of bearing
+  read_html(url_list[[6]]) %>% html_nodes('#main-content > div > div.product-table.product-details > div:nth-child(4) > div:nth-child(4) > div > table') %>% html_text() %>% 
+    gsub(pattern = "\\b\r\n",replace = "") %>% 
+    gsub(pattern = "\\b[A-z]",replace = "") %>%
+    stripWhitespace() ->text2
+  text2          <- as.data.frame(text2)
+  names(text2)   <- c('VND_WEIGHT')
+  text2$ID       <- 1:nrow(text2)
+  Table_81112_TN <-merge(x = Table_merge, y = text2, by = "ID", all.y = TRUE)
+  rm(T1,T2,T3,text1,text2,Table_merge)
+}
+
+#url 7
+################################
+if (index(url_list[[7]]) == 1 ){
+  T1        <-read_html(url_list[[7]]) %>% html_nodes('table') %>% .[[1]] %>% html_table()
+  T1        <-as.data.frame(t(T1))
+  T1        <- T1[-c(2,4),-c(4:7)]
+  names(T1) <-c('VND_INNER_DIAMETER','VND_OUTER_DIAMETER','VND_WIDTH','VND_RADIAL_CLEARANCE')
+  T1        <- T1[-1,]
+  T2        <-read_html(url_list[[7]]) %>% html_nodes('table') %>% .[[2]] %>% html_table()
+  T2        <-as.data.frame(t(T2))
+  T3        <-read_html(url_list[[7]]) %>% html_nodes('table') %>% .[[3]] %>% html_table() 
+  T3        <-as.data.frame(t(T3))
+  T3        <- T3[-c(1,3,5),]
+  T3        <-T3[,-c(3,4,6,7,8,9)]
+  names(T3) <- c('VND_Dynamic','VND_Static','VND_Rated_speed')
+  T3        <- T3[-1,]
+  T3$ID     <- 1:nrow(T3)
+  T1$ID     <- 1:nrow(T1)
+  Table_merge <-merge(x = T1, y = T3, by = "ID", all.y = TRUE)
+  read_html(url_list[[7]]) %>% html_nodes('h1') %>% html_text() %>% gsub(pattern = "\\b\r\n",replace = "") ->text1
+  text1          <- as.data.frame(text1)
+  text1          <- as.data.frame(t(text1))
+  names(text1)   <- c('VND_TYPE','VND_SERIES')
+  text1$ID       <- 1:nrow(text1)
+  Table_merge    <-merge(x = Table_merge, y = text1, by = "ID", all.y = TRUE)
+  ###read Mass of bearing
+  read_html(url_list[[7]]) %>% html_nodes('#main-content > div > div.product-table.product-details > div:nth-child(4) > div:nth-child(4) > div > table') %>% html_text() %>% 
+    gsub(pattern = "\\b\r\n",replace = "") %>% 
+    gsub(pattern = "\\b[A-z]",replace = "") %>%
+    stripWhitespace() ->text2
+  text2          <- as.data.frame(text2)
+  names(text2)   <- c('VND_WEIGHT')
+  text2$ID       <- 1:nrow(text2)
+  Table_21313_EK <-merge(x = Table_merge, y = text2, by = "ID", all.y = TRUE)
+  rm(T1,T2,T3,text1,text2,Table_merge)
+}
+
+#url8
+################################
+if (index(url_list[[8]]) == 1 ){
+  T1        <-read_html(url_list[[8]]) %>% html_nodes('table') %>% .[[1]] %>% html_table()
+  T1        <-as.data.frame(t(T1))
+  T1        <- T1[-c(2,4),-c(4,5,7,8)]
+  names(T1) <-c('VND_INNER_DIAMETER','VND_OUTER_DIAMETER','VND_WIDTH','VND_RADIAL_CLEARANCE')
+  T1        <- T1[-1,]
+  T2        <-read_html(url_list[[8]]) %>% html_nodes('table') %>% .[[2]] %>% html_table()
+  T2        <-as.data.frame(t(T2))
+  T3        <-read_html(url_list[[8]]) %>% html_nodes('table') %>% .[[3]] %>% html_table() 
+  T3        <-as.data.frame(t(T3))
+  T3        <- T3[-c(1,3,5),-c(3,4,6,7,8)]
+  names(T3) <- c('VND_Dynamic','VND_Static','VND_Rated_speed')
+  T3        <- T3[-1,]
+  T3$ID     <- 1:nrow(T3)
+  T1$ID     <- 1:nrow(T1)
+  Table_merge <-merge(x = T1, y = T3, by = "ID", all.y = TRUE)
+  read_html(url_list[[8]]) %>% html_nodes('h1') %>% html_text() %>% gsub(pattern = "\\b\r\n",replace = "") ->text1
+  text1     <- as.data.frame(text1)
+  text1     <- as.data.frame(t(text1))
+  names(text1)    <- c('VND_TYPE','VND_SERIES')
+  text1$ID        <- 1:nrow(text1)
+  Table_merge     <-merge(x = Table_merge, y = text1, by = "ID", all.y = TRUE)
+  ###read Mass of bearing
+  read_html(url_list[[8]]) %>% html_nodes('#main-content > div > div.product-table.product-details > div:nth-child(4) > div:nth-child(4) > div > table') %>% html_text() %>% 
+    gsub(pattern = "\\b\r\n",replace = "")  %>% 
+    gsub(pattern = "\\b[A-z]",replace = "") %>%
+    stripWhitespace() ->text2
+  text2          <- as.data.frame(text2)
+  names(text2)   <- c('VND_WEIGHT')
+  text2$ID       <- 1:nrow(text2)
+  Table_NU_1018_M <-merge(x = Table_merge, y = text2, by = "ID", all.y = TRUE)
+  rm(T1,T2,T3,text1,text2,Table_merge)
+}
+
+#url9
+################################
+if (index(url_list[[9]]) == 1 ){
+  T1        <-read_html(url_list[[9]]) %>% html_nodes('table') %>% .[[2]] %>% html_table()
+  T1        <-as.data.frame(t(T1))
+  T1        <- T1[-c(2,4),-c(3,4,6,8,9)]
+  names(T1) <-c('VND_INNER_DIAMETER','VND_OUTER_DIAMETER','VND_WIDTH','VND_RADIAL_CLEARANCE')
+  T1        <- T1[-1,]
+  T2        <-read_html(url_list[[9]]) %>% html_nodes('table') %>% .[[3]] %>% html_table()
+  T2        <-as.data.frame(t(T2))
+  T3        <-read_html(url_list[[9]]) %>% html_nodes('table') %>% .[[4]] %>% html_table() 
+  T3        <-as.data.frame(t(T3))
+  T3        <- T3[-c(1,3,5),-c(3,4,6,7,8)]
+  names(T3) <- c('VND_Dynamic','VND_Static','VND_Rated_speed')
+  T3        <- T3[-1,]
+  T3$ID     <- 1:nrow(T3)
+  T1$ID     <- 1:nrow(T1)
+  Table_merge <-merge(x = T1, y = T3, by = "ID", all.y = TRUE)
+  read_html(url_list[[9]]) %>% html_nodes('h1') %>% html_text() %>% gsub(pattern = "\\b\r\n",replace = "") ->text1
+  text1     <- as.data.frame(text1)
+  text1     <- as.data.frame(t(text1))
+  names(text1) <- c('VND_TYPE','VND_SERIES')
+  text1$ID     <- 1:nrow(text1)
+  Table_merge  <-merge(x = Table_merge, y = text1, by = "ID", all.y = TRUE)
+  ###read Mass of bearing
+  read_html(url_list[[9]]) %>% html_nodes('#main-content > div > div.product-table.product-details > div:nth-child(4) > div:nth-child(5) > div > table') %>% html_text() %>% 
+    gsub(pattern = "\\b\r\n",replace = "")  %>% 
+    gsub(pattern = "\\b[A-z]",replace = "") %>%
+    stripWhitespace() ->text2
+  text2          <- as.data.frame(text2)
+  names(text2)   <- c('VND_WEIGHT')
+  text2$ID       <- 1:nrow(text2)
+  Table_387_382_A <-merge(x = Table_merge, y = text2, by = "ID", all.y = TRUE)
+  rm(T1,T2,T3,text1,text2,Table_merge)
+}
+
+###### merge from different web-pages records
+Field_Specification_Table <- 
+  rbind(Table_21309_E,Table_21313_EK,Table_22208_EK,Table_22210_EK,
+        Table_22217_EK,Table_22220_EK,Table_387_382_A,Table_81112_TN,
+        Table_NU_1018_M)
+#removing different columns
+rm(Table_21309_E,Table_21313_EK,Table_22208_EK,Table_22210_EK,
+   Table_22217_EK,Table_22220_EK,Table_387_382_A,Table_81112_TN,
+   Table_NU_1018_M)
+Field_Specification_Table        <- Field_Specification_Table[,-1]
+colnames(Field_Specification_Table)
+names(Field_Specification_Table) <- c('VND INNER DIAMETER','VND OUTER DIAMETER',
+                                      'VND WIDTH','VND RADIAL CLEARANCE','VND Dynamic',
+                                      'VND Static','VND Rated speed','VND TYPE','VND SERIES','VND WEIGHT')
+
+#write.csv(Field_Specification_Table,file = "C:/Users/RC00567995/Desktop/Spend Analytics/Spend_Analytics_WEB1.csv")
+#########################################################
+#Remove Duplicate rows from Input file based on Part#
+bearing_ip_file <- bearing_ip_file %>%
+  group_by(bearing_ip_file$PartNo) %>%
+  slice(1)
+bearing_ip_file <- bearing_ip_file[,-12]
+df<-Field_Specification_Table
+df$`VND SERIES` <- gsub(df$`VND SERIES`,pattern = ' ',replacement = '') 
+
+DF_INNER_WEB    <-dplyr::inner_join(bearing_ip_file,df,by=c("PartNo" = "VND SERIES"))
+
+DF_INNER_WEB    <- DF_INNER_WEB %>% select(-one_of(c('X1'))) 
+###########Read Mapping file according to Derived column########
+Bearing_Mapping_file <- read_excel(file.choose())
+
+colnames(Bearing_Mapping_file)
+
+Bearing_Mapping_file %>%
+  
+  filter(Bearing_Mapping_file$`Available in Input sheet` == 'D') -> Bearing_Mapping_file
+
+DF_Derived_col_names <- Bearing_Mapping_file
+rm(df)
+
+DF_INNER_WEB$VND_Long_Description<- paste(DF_INNER_WEB$SAPNo,
+                                          DF_INNER_WEB$ShortText,
+                                          DF_INNER_WEB$Size,
+                                          DF_INNER_WEB$BasicMaterial,
+                                          DF_INNER_WEB$Manufacturer,
+                                          DF_INNER_WEB$PartNo,
+                                          DF_INNER_WEB$DrawingNo,
+                                          DF_INNER_WEB$KeyNoun,
+                                          DF_INNER_WEB$POTextNo,
+                                          DF_INNER_WEB$UnitOfMeasure,
+                                          DF_INNER_WEB$PO.Text.Header,
+                                          sep = " ")
+
+DF_INNER_WEB$VND_Long_description_Length   <- nchar(DF_INNER_WEB$VND_Long_Description)
+DF_INNER_WEB$VND_Short_description_length  <- nchar(as.character(DF_INNER_WEB$ShortText)) 
+DF_INNER_WEB$VND_Short_description         <- as.character(DF_INNER_WEB$ShortText)
+DF_INNER_WEB$VND_Dupont_name               <- 'Not Available'
+DF_INNER_WEB$Sl.No <- 1:nrow(DF_INNER_WEB)
+DF_INNER_WEB <- DF_INNER_WEB[,c(ncol(DF_INNER_WEB),1:(ncol(DF_INNER_WEB)-1))]
+###writing final output file
+write.csv(DF_INNER_WEB,file = 'C:/Users/user/Desktop/Web scrap_Bearing/output_webscrap.csv',row.names = FALSE)
+
