@@ -1,0 +1,2 @@
+Extract reviews from any other product either from Amazon or snapdeal. 
+Make sure the selected product should have reasonably more reviews, for generating better word clouds 

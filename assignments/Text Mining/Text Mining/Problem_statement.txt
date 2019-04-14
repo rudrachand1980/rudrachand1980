@@ -1,0 +1,3 @@
+> Extract reviews of any other product from Amazon or snapdeal 
+> Do sentimental analysis using sentimental analysis r code and draw inferences from word clouds,dendrogram,unigram,bigram,
+ positive word cloud,negative word cloud.
