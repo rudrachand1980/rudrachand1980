@@ -1,0 +1,12 @@
+{
+  "name": "tableauintegration",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "alexa-sdk": "^1.0.25",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.2",
+    "xml2json-light": "^1.0.6",
+    "aws-sdk": "^2.375.0"
+  }
+}
